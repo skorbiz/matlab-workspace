@@ -1,0 +1,12 @@
+fileFolder = fullfile('D:','\Last Work  Nov. 2010 16','Last ColTexFeapro28 Nov', 'Brodatz classes', 'Brodatz999');
+dirOutput = dir(fullfile('/home/wail/Downloads/PNG/','*.png'));
+fileNames = {dirOutput.name};
+
+for k=1:length(fileNames) 
+               I=fileNames{k}; 
+S=imread(I);  
+[pathstr,name,ext,versn] = fileparts(I)
+%newName = sprintf('image%04d.jpg',k);    %% convert from (.png to .jpg ) format
+newName = strcat(name, '.png');
+copyfile(fileNames{k},newName);   
+end

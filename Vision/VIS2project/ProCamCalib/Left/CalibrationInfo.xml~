@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+<CalibrationInfo>
+    <Images number="20" />
+    <CameraPatternSize width="9" height="6" />
+    <ProjectorPatternSize width="9" height="7" />
+    <CameraGridSize width="25" height="25" offset="0" />
+    <ProjectorGridSize width="75" height="75" offset="0" />
+    <ProjectorResolution width="1280" height="800" />
+    <CameraFocalLength fl1="1322.87" fl2="1320.25" />
+    <CameraPrincipalPoint pp1="523.502" pp2="399.501" />
+    <CameraDistortion d1="-0.461447" d2="0.308231" d3="-0.00132126" d4="0.000241977" />
+    <ProjectorFocalLength fl1="5830.01" fl2="5676.7" />
+    <ProjectorPrincipalPoint pp1="728.899" pp2="951.099" />
+    <ProjectorDistortion d1="0.0983098" d2="39.2333" d3="0.0161991" d4="-0.151578" />
+    <RotationVectorP2C rv1="0.0307501" rv2="2.07741" rv3="2.32337" />
+    <TranslationVectorP2C tv1="234.42" tv2="-1059.76" tv3="1013.62" />
+</CalibrationInfo>

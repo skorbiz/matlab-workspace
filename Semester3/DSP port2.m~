@@ -1,0 +1,28 @@
+clear;
+%Exercise a in the DSP port2
+Ql = 800*2*pi/8000
+qh = 1800*2*pi/8000
+N = 5; % The order of the filter | uneaven number
+N =(N-1)/2
+n = [1:1:N];
+h = -sin(Qh*n)./(pi*n)+sin(Ql*n)./(pi*n);
+h0 = (Qh-Ql)/pi;
+
+b = [h(N-n+1) h0 h(n)]
+
+figure (1)
+%b = b.*hamming(17)' %Hamming window applied
+[hz w]= freqz([b],[1],2000);
+phi = 180*unwrap(angle(hz))/pi;
+subplot(3,1,1),plot(w,20*log(abs(hz)));grid;
+xlabel('Frequency (rad)');
+ylabel('Magnitude (dB)');
+subplot(3,1,2),plot(w,phi);grid;
+xlabel('Frequency (rad)');
+ylabel('Phase (degree)');
+
+%w = [0:0.1:2*pi];
+%mag = abs(0.2+0.3472*cos(w));
+%subplot(3,1,3),plot(w,mag);grid;
+%xlabel('Frequency (rad)');
+%ylabel('Manitude');

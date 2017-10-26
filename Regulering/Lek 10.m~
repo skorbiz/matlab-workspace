@@ -1,0 +1,110 @@
+%% 5.12 a
+
+a = [-1 0 0; 0.3 -0.1 0.05; 1 0 0];
+c = [0 0 -2];
+
+sys = ss(a,[],c,[]);
+
+rank(obsv(sys))
+
+
+%% 5.12 b
+
+a = [0 0.1 -100 4; -250 -7 3 50; 0 0 -3.3 0.06; 2 0 0 0.25];
+c = [0 0 1 0];
+
+sys = ss(a,[],c,[]);
+rank(obsv(sys))
+
+%% 5.12 c
+
+a = [0 0; 0 -1];
+c = [1 0; -2 0];
+
+sys = ss(a, [], c, []);
+rank(obsv(sys))
+
+%% 5.17
+
+clear
+A = [0.4158 1.025 -0.00267 -0.0001106 -0.08021 0; -5.5 -0.8302 -0.06549 0.0039 -5.115 0.809; 0 0 0 1.0 0 0; -1040 -78.35 -34.83 -0.6214 -865.6 -631; 0 0 0 0 -75 0; 0 0 0 0 0 -100];
+B = [0 0; 0 0; 0 0; 0 0; 75 0; 0 100];
+C = [-1491 -146.43 -40.2 -0.9241 -1285 -564.66; 0 1.0 0 0 0 0];
+D = [0 0; 0 0];
+
+sys = ss(A,B,C,D);
+%% a) Is the system oberserverble with both inputs
+
+rank(obsv(sys))
+
+%% b) Is the system observerble with only y1
+
+sysOneInput = ss(A,B,C(1,:),[]);
+rank(obsv(sysOneInput))
+
+%% c) Is the system observerble with only y2
+
+sysOneInput = ss(A,B,C(2,:),[]);
+rank(obsv(sysOneInput))
+
+%% d) Design a full observerble input
+
+p1 = -4 +4i;
+p2 = -4 -4i;
+p3 = -3 +3i;
+p4 = -3 -3i;
+p5 = -100;
+p6 = -75;
+p = [p1 p2 p3 p4 p5 p6];
+
+
+
+L = place(A',C(1,:)',p)'
+Ao= A-L*C(1,:)
+eig(Ao)
+
+sysTemp = ss(Ao,[],C(1,:),[]);
+rank(obsv(sysTemp))
+
+%Der findes et mere bøvlet alternativ far bog side 261
+%Der er dog en fortegns fejl på alle A erne der skulle have været positive.
+
+%% e) 
+
+x0 = [0 0.5 0 0 0 0 0 0 0 0 0 0]';
+
+p1 = -3 +3i;
+p2 = -3 -3i;
+p3 = -1 +2i;
+p4 = -1 -2i;
+p5 = -100;
+p6 = -75;
+p = [p1 p2 p3 p4 p5 p6];
+
+k = place(A, B, p);
+
+l = place(A', C(1,:)', p)';
+
+ACL = [A B*k; l*C(1,:) A-l* C(1,:)-B*k]
+BCL = [B*k; B*k]
+
+sys = ss(ACL, BCL, [C(1,:) zeros(1,6)], []);
+
+dt = 0.01;
+t = 0:dt:10;
+
+eig(ACL)
+
+[y,t,x]=initial(sys, x0 ,t);
+plot(t,y)
+
+
+%% Alt
+plant = ss(A,B,C(1,:),[])
+
+regulator = reg(plant,k,l)
+
+sysCL= feedback(plant,regulator);
+
+[y t X] = initial(sysCL, x0);
+plot(t,y);

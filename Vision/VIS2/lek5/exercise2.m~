@@ -1,0 +1,75 @@
+% Clean up
+clear;clc;close all;
+
+% Bring 'ext' folder into scope
+path('ext', path);
+
+% Read the object and the scene
+object = dlmread('rhino.txt');
+scene = dlmread('scene3.txt');
+
+% Show the object and the scene
+show_obj_scn(object, scene, 'Input object and scene');
+
+% When done with pose estimation, store the aligned model here
+object_align = object;
+
+%%%%%%%%%%%%%%%%%%%% YOUR RANSAC CODE GOES HERE %%%%%%%%%%%%%%%%%%%%
+% Recommendation: use the spin image descriptors to find correspondences
+% between object/scene points. Three point pairs are enough for estimating
+% a transformation in each RANSAC  iteration. Then you can evaluate a fit
+% error or count the number of inliers to check the sampled transformation.
+%
+% Functions that you may want to use:
+%   spin_images - Find spin image descriptors for a point set
+%   randperm - Find random unique indices using sampling without
+%              replacement
+%   knnsearch - Find nearest neighbor(s) between sets of vectors, both 3D
+%               points and descriptors
+%   transformation_estimation_svd - Estimate transformation between two 3D
+%                                   point sets
+%   transform_points - Apply a transformation to a set of points
+%
+% NOTE: when you are done, remember to apply the resulting transformation
+% to object_align for the alignment visualization below to work.
+
+%%%
+%spin_imgs_object = spin_images(object);
+%spin_imgs_sceen  = spin_images(scene);
+%%%
+
+spin_object = dlmread('spin_scene3.txt');
+spin_scene = dlmread('spin_object.txt');
+
+[sizeM sizeN] = size(spin_object);
+
+spin_random_object = zeros(3,sizeN);
+for i = 1:3
+    spin_random_object(i,:) = spin_object( round(rand(1)*(sizeN-1) )+1, :);
+end
+
+IDX = knnsearch(spin_scene , spin_random_object);
+
+object_maped = zeros(length(IDX),3);
+maped = zeros(length(IDX),3);
+
+for i = 1:length(IDX)
+    object_rand(i,:) = object(IDX(i),:);
+end
+
+T = transformation_estimation_svd(object_rand,scene);
+object_align = transform_points(object,T);
+
+
+
+
+%maxItterations  = 10;
+%best_error = 0;
+%best_model = 0;
+%best_consensus_set = 0;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Show RANSAC alignment
+show_obj_scn(object_align, scene, 'RANSAC result');

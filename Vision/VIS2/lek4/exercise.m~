@@ -1,0 +1,203 @@
+%
+% MAIN ENTRY POINT
+%
+% You are supposed to fill in parts of the below code where mentioned. Plot
+% functionalities are already provided, so your solutions will
+% automatically be shown.
+%
+% You test your solutions simply by running 'exercise' in the MATLAB
+% command window. Make sure that your current MATLAB folder is set to the
+% folder containing the scripts.
+%
+function exercise
+% Clean up
+clear;clc;close all;
+
+% Exact solution of line
+a_true = -1.4;
+b_true = 5;
+
+% Three data points (one per column) on the line
+xpoints = [-25; 1; 25];
+ypoints = a_true*xpoints + b_true;
+
+% -------------------------------------------------------------------------
+% EXERCISE 1: Implement a solver for the parameters a and b in the line
+% equation y = a*x + b given a set of (x,y) samples in xpoints and ypoints.
+%
+% HINTS: The \ operator
+% -------------------------------------------------------------------------
+%
+% Data to fill
+a = 0;
+b = 0;
+   
+A = [xpoints [1; 1; 1]];
+B = ypoints;
+res = A\B;
+a = res(1);
+b = res(2);
+        
+% Plot line solution
+plot_line_solutions(xpoints, ypoints, a, b, 0, a_true, b_true, 'Ideal solution and data points');
+saveas(gcf, 'ideal.png')
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% EXERCISE 2: Fill the vectors a_runs and b_runs with 100 estimations of a
+% and b, where you in each iteration use the noisy versions of the data,
+% stored column-wise in xnoisy and ynoisy. After finding the solutions,
+% compute the mean squared errors (MSE) between your estimates and the true
+% values of a and b.
+% -------------------------------------------------------------------------
+%
+% Add noise with a standard deviation of 1 to all 3 points, take 100
+% samples
+std_noise = [1; 1; 1];
+ynoisy = repmat(ypoints, 1, 100) + [std_noise(1)*randn(1, 100); std_noise(2)*randn(1,100); std_noise(3)*randn(1,100)];
+% data to fill
+a_runs = zeros(100,1);
+b_runs = zeros(100,1);
+
+for i=1:100
+    
+    A = [xpoints [1; 1; 1]];
+    B = ynoisy(:,i);
+    res = A\B;
+    a_runs(i) = res(1);
+    b_runs(i) = res(2);
+end
+a_mean = MEAN(a_runs)
+b_mean = MEAN(b_runs)
+1/length(a_runs)*sum((a_))
+
+
+%
+% PRESENT MSE BETWEEN YOUR 100 ESTIMATES AND THE TRUE VALUES HERE
+%
+
+% Show solutions
+plot_line_solutions(xpoints, ypoints, a_runs, b_runs, std_noise, a_true, b_true, 'Ensemble of solutions, std=[1 1 1]');
+saveas(gcf, 'noisy_1_1_1.png');
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% EXERCISE 3: Rerun exercise 2, now with the updated noisy data
+% -------------------------------------------------------------------------
+%
+% Add noise with different standard deviations, take 100 samples
+std_noise = [1; 10; 1];
+ynoisy = repmat(ypoints, 1, 100) + [std_noise(1)*randn(1, 100); std_noise(2)*randn(1,100); std_noise(3)*randn(1,100)];
+% Data to fill
+a_runs = zeros(100,1);
+b_runs = zeros(100,1);
+for i=1:100
+    
+    %
+    % YOUR ESTIMATION CODE GOES HERE
+    %
+    
+end
+
+%
+% PRESENT MSE BETWEEN YOUR 100 ESTIMATES AND THE TRUE VALUES HERE
+%
+
+% Show solutions
+plot_line_solutions(xpoints, ypoints, a_runs, b_runs, std_noise, a_true, b_true, 'Ensemble of solutions, std=[1 10 1]');
+saveas(gcf, 'noisy_1_10_1.png');
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% EXERCISE 4: Rerun exercise 3, now with a proper weighting of the linear
+% system.
+%
+% HINTS: The weighting should be a proper function of the expected
+% uncertainty of a measurement. Additionally, both sides of the linear
+% system should be weighted the same way.
+% -------------------------------------------------------------------------
+%
+% Data to fill
+a_runs = zeros(100,1);
+b_runs = zeros(100,1);
+for i=1:100
+    
+    %
+    % YOUR ESTIMATION CODE GOES HERE
+    %
+    
+end
+
+%
+% PRESENT MSE BETWEEN YOUR 100 ESTIMATES AND THE TRUE VALUES HERE
+%
+
+% Show solutions
+plot_line_solutions(xpoints, ypoints, a_runs, b_runs, std_noise, a_true, b_true, 'Ensemble of weighted solutions, std=[1 10 1]');
+saveas(gcf, 'weighted_noisy_1_10_1.png');
+% -------------------------------------------------------------------------
+
+
+end % End function exercise
+
+
+% HELPER FUNCTION FOR SHOWING RESULTS
+function plot_line_solutions(xpoints, ypoints, a, b, std_noise, a_true, b_true, name)
+% Get number of solutions of a and b
+numest = length(a);
+assert(length(b)==numest, 'Inconsistent number of estimations!');
+% Open the figure
+figure('Name', name)
+% If there are multiple solutions, show box plots of a and b and the true
+% values as green asterisks plus boxplots of squared/Mahalanobis residuals
+if numest > 1
+    subplot(131)
+    title('Estimated vs. true parameters')
+    hold on
+    boxplot([a b], 'label', {'a','b'})
+    plot([a_true; b_true], 'g*')
+    legend('True values of a and b')
+    hold off
+    subplot(132)
+    % Calculate squared and Mahalanobis residuals
+    errors_sq = zeros(100,1);
+    errors_mahal = zeros(100,1);
+    for i=1:numest
+        residual = a(i)*xpoints + b(i) - ypoints;
+        errors_sq(i) = residual' * residual;
+        errors_mahal(i) = residual' * diag(1./std_noise) * residual;
+    end
+    % Show in a boxplot
+    boxplot([errors_sq errors_mahal], 'label', {'Squared', 'Mahalanobis'});
+    title('Residuals')
+end
+% Generate data for x-axis
+xmin = min(xpoints);
+xmax = max(xpoints);
+xinc = 0.01*(xmax-xmin);
+xdata = xmin:xinc:xmax;
+% Activate current plot and hold
+if numest > 1, subplot(133), end
+hold on;
+% Insert calculated solutions as blue lines
+for i=1:numest
+    ydata = a(i)*xdata+b(i);
+    h1=plot(xdata,ydata,'b-');
+end
+% Insert original data points in red
+h2=plot(xpoints, ypoints, 'ro', 'MarkerSize', 5, 'MarkerFaceColor', [1 0 0]);
+if numest > 1
+    title('Solutions vs. data points')
+    legend([h1 h2], 'Estimated lines', 'Data points')
+else
+    title('Solution vs. data points')
+    legend([h1 h2], 'Estimated line', 'Data points')
+end
+xlim([xmin-xinc xmax+xinc]);
+xlabel('x')
+ylabel('y')
+hold off;
+end % End function plot_line_solutions

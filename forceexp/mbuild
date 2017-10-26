@@ -1,0 +1,383 @@
+#!/bin/sh
+#
+#  Name:
+#     mbuild    compilation program for executable programs
+#
+# Copyright 1984-2014 The MathWorks, Inc.
+#____________________________________________________________________________
+#
+    
+    arg0_=$0
+    tmpbase=/tmp/mbuild.$LOGNAME.$$
+       
+    abort='rm -f $INTERMEDIATE $basename.o > /dev/null 2>&1; \
+           echo ""; \
+           echo "    mbuild:  interrupted."; \
+           echo ""'
+#
+    trap "eval $abort; exit 1" 1 2 3 15
+    
+#
+#========================= archlist.sh (start) ============================
+#
+# usage:        archlist.sh
+#
+# abstract:     This Bourne Shell script creates the variable ARCH_LIST.
+#
+# note(s):      1. This file is always imbedded in another script
+#
+# Copyright 1997-2013 The MathWorks, Inc.
+#----------------------------------------------------------------------------
+#
+    ARCH_LIST='glnxa64 maci64'
+#=======================================================================
+# Functions:
+#   check_archlist ()
+#=======================================================================
+    check_archlist () { # Sets ARCH. If first argument contains a valid
+			# arch then ARCH is set to that value else
+		        # an empty string. If there is a second argument
+			# do not output any warning message. The most
+			# common forms of the first argument are:
+			#
+			#     ARCH=arch
+			#     MATLAB_ARCH=arch
+			#     argument=-arch
+			#
+                        # Always returns a 0 status.
+                        #
+                        # usage: check_archlist arch=[-]value [noprint]
+                        #
+	if [ $# -gt 0 ]; then
+	    arch_in=`expr "$1" : '.*=\(.*\)'`
+	    if [ "$arch_in" != "" ]; then
+	        ARCH=`echo "$ARCH_LIST EOF $arch_in" | awk '
+#-----------------------------------------------------------------------
+	{ for (i = 1; i <= NF; i = i + 1)
+	      if ($i == "EOF")
+		  narch = i - 1
+	  for (i = 1; i <= narch; i = i + 1)
+		if ($i == $NF || "-" $i == $NF) {
+		    print $i
+		    exit
+		}
+	}'`
+#-----------------------------------------------------------------------
+	       if [ "$ARCH" = "" -a $# -eq 1 ]; then
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+echo ' '
+echo "    Warning: $1 does not specify a valid architecture - ignored . . ."
+echo ' '
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	       fi
+	    else
+		ARCH=""
+	    fi
+	else
+	    ARCH=""
+	fi
+#
+	return 0
+    }
+#=======================================================================
+#========================= archlist.sh (end) ==============================
+#
+#========================== getrootdir.sh (start) ============================
+# Copyright 2008 The MathWorks, Inc.
+  get_root_dir () {
+#
+#   Determine the path of the MATLAB root directory - always one directory
+#   up from the path to this command.
+#
+    filename=$1
+#
+# Now it is either a file or a link to a file.
+#
+    cpath=`pwd`
+#
+# Follow up to 8 links before giving up. Same as BSD 4.3
+#
+    n=1
+    maxlinks=8
+    while [ $n -le $maxlinks ]
+    do
+#
+# Get directory correctly!
+#
+        newdir=`echo "$filename" | awk '
+                        { tail = $0
+                          np = index (tail, "/")
+                          while ( np != 0 ) {
+                             tail = substr (tail, np + 1, length (tail) - np)
+                             if (tail == "" ) break
+                             np = index (tail, "/")
+                          }
+                          head = substr ($0, 1, length ($0) - length (tail))
+                          if ( tail == "." || tail == "..")
+                             print $0
+                          else
+                             print head
+                        }'`
+        if [ ! "$newdir" ]; then
+            newdir="."
+        fi
+        (cd "$newdir") > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            describe internal_error_1 >&2
+            cleanup
+            exit 1
+        fi
+        cd "$newdir"
+#
+# Need the function pwd - not the built in one
+#
+        newdir=`/bin/pwd`
+#
+        newbase=`expr //"$filename" : '.*/\(.*\)' \| "$filename"`
+        lscmd=`ls -l "$newbase" 2>/dev/null`
+        if [ ! "$lscmd" ]; then
+            describe internal_error_2 >&2
+            cleanup
+            exit 1
+        fi
+#
+# Check for link portably
+#
+        if [ `expr "$lscmd" : '.*->.*'` -ne 0 ]; then
+            filename=`echo "$lscmd" | awk '{ print $NF }'`
+        else
+#
+# It's a file
+#
+            dir="$newdir"
+            command="$newbase"
+#
+            cd "$dir"/..
+            MATLAB=`/bin/pwd`; export MATLAB
+            break
+        fi
+        n=`expr $n + 1`
+    done
+    if [ $n -gt $maxlinks ]; then
+        describe internal_error_3 >&2
+        cleanup
+        exit 1
+    fi
+#       
+    cd "$cpath"
+  }
+#   end get_root_dir ()
+#========================== getrootdir.sh (end) ==============================
+#
+#============================================================================
+#  FUNCTION DEFINITIONS
+#============================================================================
+#
+#****************************************************************************
+#
+# NOTE: A call to cleanup MUST precede any call to exit within this script,
+#       except for within trap calls.
+  cleanup () {
+#
+# Clean up temporary and intermediate files (usually in preparation
+# for exiting)
+#
+    trap "eval $abort; exit 1" 1 2 3 15
+    rm -f $INTERMEDIATE > /dev/null 2>&1
+    }
+#   end cleanup ()
+#
+#****************************************************************************
+#
+  displayHelp() {
+      "$TMW_ROOT/bin/$ARCH/mbuildHelp"
+  }
+
+#****************************************************************************
+#
+  describe () {
+#
+    case "$1" in
+        unknown_architecture)
+    echo ''
+    echo '    Sorry! We could not determine the machine architecture'
+    echo '           for your host. Please contact:'
+    echo ''
+    echo '               MathWorks Technical Support'
+    echo ''
+    echo '           for further assistance.'
+    echo ''
+            ;;
+        no_util_scripts)
+    echo ''
+    echo '    Sorry! We could not determine the machine architecture'
+    echo '           for your host, because one of the utilities'
+    echo ''
+    echo '               $MATLAB/bin/util/arch.sh'
+    echo ''
+    echo '           or'
+    echo ''
+    echo '               $MATLAB/bin/util/oscheck.sh'
+    echo ''
+    echo '           could not be found. Please make sure that your'
+    echo '           installation is not corrupted.  If you specified'
+    echo '           the value of $MATLAB in the command line, please'
+    echo '           make sure you specified the right value.'
+    echo ''
+    echo '           Here'
+    echo ''
+    echo "               MATLAB = $MATLAB"
+    echo ''
+    echo '           Please contact:'
+    echo ''
+    echo '               MathWorks Technical Support'
+    echo ''
+    echo '           if you need assistance.'
+    echo ''
+            ;;
+        *)
+    echo ''
+    echo " Internal error: unimplemented message $1"
+    echo ''
+            ;;
+    esac
+  }
+# end describe ()
+#
+#****************************************************************************
+#
+  get_arch () {
+
+    if [ "$ARCH" = "" ]; then # No command line override given
+	   if [ ! -f $MATLAB/bin/util/arch.sh ]; then
+		  describe no_util_scripts >&2
+		  cleanup
+		  exit 1
+	   fi
+	
+	   . $MATLAB/bin/util/arch.sh
+	
+    else # Use command line override
+	   Arch=$ARCH
+    fi
+	
+    if [ "$Arch" = "unknown" ]; then
+       describe unknown_architecture >&2
+       cleanup
+       exit 1
+    fi
+	
+	if [ ! -f $MATLAB/bin/util/oscheck.sh ]; then
+       #describe no_util_scripts >&2
+       cleanup
+       exit 1
+    fi
+	
+    if [ "$verbose" = "1" ]; then
+       temp_file=$tmpbase.b
+       INTERMEDIATE="$INTERMEDIATE $temp_file"
+	   . $MATLAB/bin/util/oscheck.sh
+       if [ "$oscheck_status" = "1" ]; then
+          cleanup
+          exit 1
+       fi
+    fi
+  }
+# end get_arch ()
+#
+#****************************************************************************
+#
+# Main routine
+#
+#
+# Determine what is set in the environment
+# 
+    # Define $MATLAB if it's not defined. 
+    if [ ! "$MATLAB" ]; then            # If no MATLAB='' was used
+        get_root_dir $arg0_
+    fi
+    AUTOMOUNT_MAPenv="$AUTOMOUNT_MAP"
+#
+#  Initialize some variables
+#
+    TOOL_DISPLAY_NAME="MATLAB Compiler"
+    TMW_ROOT="$MATLAB"
+    AUTOMOUNT_MAP=''
+    SOURCE_DIR="search"
+    OPTIONS_FILE="mbuildopts.sh"
+#   
+    if [ `uname` = "Darwin" ]; then
+	privatemap=`expr "$TMW_ROOT" : '/private/*'`
+	if [ "$privatemap" = "9" ]; then
+   	   # If $TMW_ROOT starts with /private/ assume it needs to have
+  	   # AUTOMOUNT_MAP set.
+   	   AUTOMOUNT_MAP='/private ->'
+	fi
+    fi
+#
+# If AUTOMOUNT_MAPenv is not empty ALWAYS use that for AUTOMOUNT_MAP
+#
+    if [ "$AUTOMOUNT_MAPenv" != "" ]; then
+        AUTOMOUNT_MAP="$AUTOMOUNT_MAPenv"
+    fi
+#
+    if [ "$AUTOMOUNT_MAP" != "" ]; then
+#----------------------------------------------------------------------------
+            TMW_ROOT=`echo $TMW_ROOT $AUTOMOUNT_MAP | awk '
+                {if (substr($1,1,length($2)) == $2)
+                     if (NF == 4)                               # a -> b
+                         print $NF substr($1,length($2) + 1)
+                     else                                       # a ->
+                         print substr($1,length($2) + 1)
+                 else
+                     print $1}'`
+#----------------------------------------------------------------------------
+    fi
+#
+    stat="OK"
+    Arch='Undetermined'
+    ARCH=
+    get_arch                            # Determine architecture
+# 
+
+#
+# Display mbuild Help contents if we  find the -h or 
+# -help option in the mbuild command line invocation
+#
+    for var in "$@"
+    do		 
+        if [ "$var" = "-h" -o "$var" = "-help" ]; then        # Help option.
+           displayHelp
+           cleanup
+           exit 0
+	fi
+    done
+
+    mexDir="$TMW_ROOT/bin/mex"
+	  
+    if [ "$ARCH" = "maci64" ]; then
+	 
+       for var in "$@"
+       do
+           if [ "$var" = "-g" ]; then
+              if [ "$1" = "-client" ]; then
+                 "$mexDir" -largeArrayDims 'CMDLINE250=xcrun -sdk macosx$SDKVER dsymutil "$EXEDIR$EXENAME$LDEXT"' "$@"
+              else
+                 "$mexDir" -largeArrayDims -client mbuild 'CMDLINE250=xcrun -sdk macosx$SDKVER dsymutil "$EXEDIR$EXENAME.app/Contents/MacOS/$EXENAME"' "$@"
+              fi
+              cleanup
+              exit 0
+           fi
+       done         
+		 
+    fi
+
+    if [ "$1" = "-client" ]; then
+       "$mexDir" -largeArrayDims "$@"
+    else
+       "$mexDir" -largeArrayDims -client mbuild "$@"       
+    fi 
+    
+    cleanup
+    exit 0	
+#****************************************************************************

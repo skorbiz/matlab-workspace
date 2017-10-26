@@ -1,0 +1,15 @@
+clear
+%Example 7.15
+fs = 8000;
+f = [0 0.25 0.2 0.4 0.5 1];       %Edge frequencies
+m = [0 0 1 1 0 0];                  %Ideal magnitudes
+
+%weights
+delta_pass = 10^(0.05/20)-1;
+delta_stop = 10^(-50/20);
+Ws = delta_pass/delta_stop;
+Wp = 1;
+
+w = [19 10 19];
+b = firpm(5,f,m,w)
+format long;
